@@ -33,9 +33,14 @@ export function truthTable(
     rows: target.expected.map((expected, index) => {
       const av = (index >> 1) as 0 | 1,
         bv = (index & 1) as 0 | 1;
-      const actual = evaluate(document, { [a[0].id]: av, [b[0].id]: bv })
-        .values[outputs[0].id];
-      return { a: av, b: bv, expected, actual, matches: actual === expected };
+      const actual = evaluate(document, {
+        [a[0].id]: av,
+        [b[0].id]: bv,
+      }).values[outputs[0].id];
+      // 只有确定的 0/1 才能判定通过；高阻 Z 与未知 X 一律不匹配，绝不把 Z 当 0
+      const matches =
+        (actual === 0 || actual === 1) && actual === expected;
+      return { a: av, b: bv, expected, actual, matches };
     }),
   };
 }

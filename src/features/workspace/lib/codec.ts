@@ -1,8 +1,14 @@
-import type { CircuitDocument, GateNode, Wire } from "@/shared/types";
+import type {
+  CircuitDocument,
+  GateNode,
+  Junction,
+  Wire,
+} from "@/shared/types";
 import { getSpec } from "@/features/catalog";
-import { topologicalOrder } from "@/features/circuit";
+import { resolveNetworks, topologicalOrder } from "@/features/circuit";
 const object = (value: unknown): value is Record<string, unknown> =>
   !!value && typeof value === "object" && !Array.isArray(value);
+const TARGETS = ["xor", "and", "or"];
 export function decodeDocument(text: string): CircuitDocument {
   if (text.length > 2_000_000)
     throw new Error("实验文件超过 2 MB，请缩小后再导入");
@@ -12,7 +18,7 @@ export function decodeDocument(text: string): CircuitDocument {
     data.version !== 1 ||
     typeof data.name !== "string" ||
     data.name.length > 80 ||
-    !["xor", "and", "or"].includes(String(data.targetId)) ||
+    !TARGETS.includes(String(data.targetId)) ||
     !Array.isArray(data.nodes) ||
     !Array.isArray(data.wires)
   )
@@ -53,6 +59,30 @@ export function decodeDocument(text: string): CircuitDocument {
       value: value.value,
     };
   });
+  // 汇接点为可选字段：旧单线实验没有该字段，导入后语义保持不变
+  let junctions: Junction[] | undefined;
+  if (data.junctions !== undefined) {
+    if (!Array.isArray(data.junctions) || data.junctions.length > 200)
+      throw new Error("汇接点数量最多 200 个");
+    junctions = data.junctions.map((value) => {
+      if (
+        !object(value) ||
+        typeof value.id !== "string" ||
+        !value.id ||
+        value.id.length > 100 ||
+        ids.has(value.id) ||
+        !Number.isFinite(value.x) ||
+        !Number.isFinite(value.y)
+      )
+        throw new Error("汇接点内容无效或编号重复");
+      ids.add(value.id);
+      return {
+        id: value.id,
+        x: Number(value.x),
+        y: Number(value.y),
+      };
+    });
+  }
   const wireIds = new Set<string>(),
     occupied = new Set<string>();
   const wires: Wire[] = data.wires.map((value) => {
@@ -66,32 +96,40 @@ export function decodeDocument(text: string): CircuitDocument {
       !object(value.to)
     )
       throw new Error("连线内容无效或编号重复");
-    const fromId = value.from.nodeId,
-      toId = value.to.nodeId;
-    const from = nodes.find((n) => n.id === fromId),
-      to = nodes.find((n) => n.id === toId);
+    const fromId = String(value.from.nodeId),
+      toId = String(value.to.nodeId);
     const fp = value.from.port,
       tp = value.to.port;
+    if (!Number.isInteger(fp) || !Number.isInteger(tp))
+      throw new Error("连线端口无效");
+    const fromJunction = junctions?.some((j) => j.id === fromId);
+    const toJunction = junctions?.some((j) => j.id === toId);
+    const from = nodes.find((n) => n.id === fromId);
+    const to = nodes.find((n) => n.id === toId);
     if (
-      !from ||
-      !to ||
-      from === to ||
-      !Number.isInteger(fp) ||
-      !Number.isInteger(tp) ||
-      Number(fp) < 0 ||
-      Number(fp) >= getSpec(from.kind).outputs ||
-      Number(tp) < 0 ||
-      Number(tp) >= getSpec(to.kind).inputs
+      (!from && !fromJunction) ||
+      (!to && !toJunction) ||
+      fromId === toId
+    )
+      throw new Error("连线引用了无效端点");
+    if (
+      (from && Number(fp) < 0) ||
+      (from && Number(fp) >= getSpec(from.kind).outputs) ||
+      (to && Number(tp) < 0) ||
+      (to && Number(tp) >= getSpec(to.kind).inputs)
     )
       throw new Error("连线引用了无效端口");
-    const key = `${to.id}:${tp}`;
-    if (occupied.has(key)) throw new Error("同一输入端口不能连接两个输出");
+    // 普通输入端口仍只允许一条线；BUS 输入与汇接点支持多路汇入
+    const allowsFanIn = toJunction || to?.kind === "BUS";
+    const key = `${toId}:${tp}`;
+    if (!allowsFanIn && occupied.has(key))
+      throw new Error("同一输入端口不能连接两个输出");
     occupied.add(key);
     wireIds.add(value.id);
     return {
       id: value.id,
-      from: { nodeId: from.id, port: Number(fp) },
-      to: { nodeId: to.id, port: Number(tp) },
+      from: { nodeId: fromId, port: Number(fp) },
+      to: { nodeId: toId, port: Number(tp) },
     };
   });
   const document: CircuitDocument = {
@@ -101,9 +139,13 @@ export function decodeDocument(text: string): CircuitDocument {
     nodes,
     wires,
   };
+  if (junctions?.length) document.junctions = junctions;
+  // 网络划分与无环校验：保证汇接关系可恢复且不引入反馈
+  resolveNetworks(document);
   topologicalOrder(document);
   return document;
 }
 export function encodeDocument(document: CircuitDocument): string {
+  // 汇接关系与各段信号归属随文档持久化（信号归属由网络拓扑确定性重建）
   return JSON.stringify(document, null, 2);
 }

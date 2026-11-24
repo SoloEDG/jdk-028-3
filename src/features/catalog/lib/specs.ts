@@ -64,6 +64,32 @@ export const gateSpecs: readonly GateSpec[] = [
     outputs: 1,
     description: "或门结果取反",
   },
+  {
+    kind: "TRI",
+    name: "三态缓冲器",
+    symbol: "1▷EN",
+    inputs: 2,
+    outputs: 1,
+    description:
+      "EN=1 时把 IN 送到输出；EN=0 时输出高阻 Z，与总线断开；EN 未知时结果未知",
+  },
+  {
+    kind: "BUS",
+    name: "共享总线",
+    symbol: "BUS",
+    inputs: 1,
+    outputs: 1,
+    description:
+      "允许多个三态发送端轮流驱动同一根线，输入输出内部短接；无驱动时为高阻 Z",
+  },
+  {
+    kind: "PROBE",
+    name: "分支探针",
+    symbol: "P",
+    inputs: 1,
+    outputs: 0,
+    description: "挂在总线分支上只读取电平，不参与驱动；可如实显示 0/1/X/Z",
+  },
 ];
 export function getSpec(kind: string): GateSpec {
   const spec = gateSpecs.find((item) => item.kind === kind);

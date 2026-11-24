@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { CircuitDocument, SimulationResult } from "@/shared/types";
-import { portPoint, wirePath } from "../lib/geometry";
+import { endpointPoint, wirePath } from "../lib/geometry";
 const props = defineProps<{
   document: CircuitDocument;
   signals: SimulationResult;
@@ -9,14 +9,14 @@ const props = defineProps<{
 defineEmits<{ select: [id: string] }>();
 function pathFor(id: string) {
   const wire = props.document.wires.find((w) => w.id === id)!;
-  const from = props.document.nodes.find((n) => n.id === wire.from.nodeId);
-  const to = props.document.nodes.find((n) => n.id === wire.to.nodeId);
-  return from && to
-    ? wirePath(
-        portPoint(from, "output", wire.from.port),
-        portPoint(to, "input", wire.to.port),
-      )
-    : "";
+  const from = endpointPoint(props.document, wire.from, "from");
+  const to = endpointPoint(props.document, wire.to, "to");
+  return from && to ? wirePath(from, to) : "";
+}
+function conflicted(wireId: string): boolean {
+  return props.signals.conflicts.some((conflict) =>
+    conflict.wireIds.includes(wireId),
+  );
 }
 </script>
 <template>
@@ -27,7 +27,7 @@ function pathFor(id: string) {
         class="wire-hit"
         role="button"
         tabindex="0"
-        aria-label="选择连线"
+        :aria-label="`选择连线，当前电平 ${signals.wires[wire.id] ?? 'X'}`"
         @pointerdown.stop
         @click.stop="$emit('select', wire.id)"
         @keydown.enter="$emit('select', wire.id)" /><path
@@ -35,7 +35,10 @@ function pathFor(id: string) {
         :class="[
           'wire',
           `wire-${signals.wires[wire.id] ?? 'X'}`,
-          { 'wire-selected': selected === wire.id },
+          {
+            'wire-selected': selected === wire.id,
+            'wire-conflict': conflicted(wire.id),
+          },
         ]" /></g
   ></g>
 </template>

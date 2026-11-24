@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { computed, ref } from "vue";
 import type {
   CircuitDocument,
-  GateKind,
+  PlacementKind,
   SimulationResult,
   Point,
 } from "@/shared/types";
@@ -10,12 +10,13 @@ import type { PortRequest } from "@/shared/commands";
 import { BOARD, snapPosition } from "../lib/geometry";
 import GateNodeView from "./GateNode.vue";
 import WireLayer from "./WireLayer.vue";
+import JunctionLayer from "./JunctionLayer.vue";
 const props = defineProps<{
   document: CircuitDocument;
   signals: SimulationResult;
   selected: string | null;
   pending: PortRequest | null;
-  tool: GateKind | null;
+  tool: PlacementKind | null;
 }>();
 const emit = defineEmits<{
   place: [point: Point];
@@ -36,9 +37,12 @@ function coordinate(event: PointerEvent): Point {
 function startDrag(event: PointerEvent, id: string) {
   if (event.button !== 0) return;
   emit("select", id);
-  const node = props.document.nodes.find((n) => n.id === id)!;
+  const node = props.document.nodes.find((n) => n.id === id);
+  const junction = props.document.junctions?.find((j) => j.id === id);
+  const target = node ?? junction;
+  if (!target) return;
   const point = coordinate(event);
-  drag = { id, offset: { x: point.x - node.x, y: point.y - node.y } };
+  drag = { id, offset: { x: point.x - target.x, y: point.y - target.y } };
   svg.value?.setPointerCapture(event.pointerId);
 }
 function pointerMove(event: PointerEvent) {
@@ -55,6 +59,12 @@ function background(event: PointerEvent) {
   if (props.tool) emit("place", snapPosition(coordinate(event)));
   else emit("select", null);
 }
+function junctionPort(id: string) {
+  emit("port", { nodeId: id, port: 0, direction: "output" });
+}
+const conflictSummary = computed(() =>
+  props.signals.conflicts.map((conflict) => conflict.message).join("；"),
+);
 </script>
 <template>
   <div class="board-scroll">
@@ -81,13 +91,21 @@ function background(event: PointerEvent) {
         @pointerdown="background"
       />
       <text x="25" y="29" class="board-caption">
-        COMBINATIONAL CIRCUIT / 组合逻辑接线台
+        COMBINATIONAL CIRCUIT / 组合逻辑接线台（含三态共享总线）
       </text>
       <WireLayer
         :document="document"
         :signals="signals"
         :selected="selected"
         @select="emit('select', $event)"
+      />
+      <JunctionLayer
+        :document="document"
+        :signals="signals"
+        :selected="selected"
+        @select="emit('select', $event)"
+        @port="junctionPort"
+        @start-drag="startDrag"
       />
       <GateNodeView
         v-for="node in document.nodes"
@@ -101,8 +119,21 @@ function background(event: PointerEvent) {
         @toggle="emit('toggle', $event)"
         @select="emit('select', $event)"
       />
+      <g v-if="conflictSummary" class="conflict-layer">
+        <rect
+          x="250"
+          y="40"
+          :width="Math.min(620, 220 + conflictSummary.length * 12)"
+          height="34"
+          rx="7"
+          class="conflict-banner-bg"
+        />
+        <text x="270" y="62" class="conflict-banner-text">
+          ⚠ {{ conflictSummary }}
+        </text>
+      </g>
       <text
-        v-if="!document.nodes.length"
+        v-if="!document.nodes.length && !(document.junctions?.length)"
         x="500"
         y="260"
         text-anchor="middle"

@@ -293,6 +293,10 @@ small {
 .dot.unknown {
   background: #a377ba;
 }
+.dot.hiz {
+  background: #cdd8de;
+  border: 1px dashed #7e93a0;
+}
 .small-note {
   font-size: 10px;
   color: #7a909d;
@@ -401,6 +405,11 @@ small {
   fill: #e6dcf0;
   stroke: #956bac;
 }
+.signal-Z {
+  fill: #eef3f6;
+  stroke: #93a7b3;
+  stroke-dasharray: 3 3;
+}
 .switch-text {
   font:
     600 15px Menlo,
@@ -458,6 +467,22 @@ small {
 .wire-X {
   stroke: #a385b4;
   stroke-dasharray: 5 5;
+}
+.wire-Z {
+  stroke: #b6c5cd;
+  stroke-dasharray: 2 6;
+  stroke-linecap: round;
+}
+.wire-conflict {
+  stroke: #d22f2f;
+  stroke-width: 4;
+  stroke-dasharray: 10 4;
+  animation: conflict-blink 0.9s steps(2, start) infinite;
+}
+@keyframes conflict-blink {
+  50% {
+    opacity: 0.45;
+  }
 }
 .wire-hit {
   fill: none;
@@ -961,4 +986,144 @@ small {
     animation: none !important;
     transition: none !important;
   }
+}
+
+/* ---------- 共享总线 / 三态 / 汇接点 ---------- */
+.pin-tag {
+  font: 8px Menlo, monospace;
+  fill: #7b93a2;
+}
+.kind-BUS .node-body {
+  fill: #f2f8fa;
+  stroke: #5f97a3;
+}
+.bus-rail {
+  stroke-width: 4;
+  stroke-linecap: round;
+}
+.bus-rail.signal-1 {
+  stroke: #df671c;
+}
+.bus-rail.signal-0 {
+  stroke: #8aa0ad;
+}
+.bus-rail.signal-X {
+  stroke: #a377ba;
+}
+.bus-rail.signal-Z {
+  stroke: #b6c5cd;
+  stroke-dasharray: 2 6;
+}
+.bus-fanin-port {
+  stroke: #147b87;
+}
+.junction-hit {
+  fill: transparent;
+  cursor: pointer;
+}
+.junction-dot {
+  stroke-width: 2;
+  cursor: pointer;
+}
+.junction-1 .junction-dot {
+  fill: #df671c;
+  stroke: #b94d0c;
+}
+.junction-0 .junction-dot {
+  fill: #8aa0ad;
+  stroke: #63798a;
+}
+.junction-X .junction-dot {
+  fill: #a377ba;
+  stroke: #7c4f96;
+}
+.junction-Z .junction-dot {
+  fill: #eef3f6;
+  stroke: #8ba0ac;
+}
+.junction-selected .junction-dot {
+  stroke-width: 3.5;
+}
+.junction-conflict .junction-dot {
+  stroke: #d22f2f;
+}
+.conflict-badge {
+  fill: #d22f2f;
+  stroke: #fff;
+  stroke-width: 1.5;
+}
+.conflict-badge-text {
+  font: 700 10px Menlo, monospace;
+  fill: #fff;
+  text-anchor: middle;
+}
+.conflict-banner-bg {
+  fill: #fdecec;
+  stroke: #e0a3a3;
+}
+.conflict-banner-text {
+  font: 600 12px "PingFang SC", sans-serif;
+  fill: #b42318;
+}
+.conflict-layer {
+  pointer-events: none;
+}
+.junction-symbol {
+  color: #147b87;
+  font-size: 18px;
+}
+.junction-tile.active {
+  border-color: #147b87;
+  background: #ecf6f7;
+  box-shadow: inset 3px 0 #147b87;
+}
+.text-Z {
+  color: #7e93a0 !important;
+}
+.network-ownership {
+  margin-top: 14px;
+  border: 1px solid #e0e8ec;
+  border-radius: 6px;
+  padding: 10px;
+  background: #f8fbfc;
+}
+.ownership-title {
+  font-size: 11px;
+  color: #51707f;
+  margin-bottom: 8px;
+}
+.ownership-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.ownership-list span {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  background: #fff;
+  border: 1px solid #d7e1e6;
+  border-radius: 999px;
+  padding: 3px 9px;
+  font-size: 10px;
+  color: #3c5a6b;
+}
+.ownership-list small {
+  color: #93a7b3;
+  font-family: Menlo, monospace;
+}
+.conflict-list {
+  margin-top: 12px;
+  display: grid;
+  gap: 6px;
+}
+.conflict-item {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.6;
+  color: #b42318;
+  background: #fdecec;
+  border: 1px solid #ecc4c4;
+  border-radius: 6px;
+  padding: 8px 10px;
 }

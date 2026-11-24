@@ -2,7 +2,7 @@ import { ref, watch, type Ref } from "vue";
 import type { CircuitDocument } from "@/shared/types";
 import type { Notice } from "@/shared/commands";
 import { decodeDocument, encodeDocument } from "../lib/codec";
-import { sampleCircuit, emptyCircuit } from "../lib/seeds";
+import { sampleCircuit, busCircuit, emptyCircuit } from "../lib/seeds";
 export const STORAGE_KEY = "logic-lab-jdk-028-v1";
 export function loadInitial(): {
   document: CircuitDocument;
@@ -45,6 +45,13 @@ export function useWorkspace(
     replace(sampleCircuit());
     notify({ tone: "success", message: "已载入异或示例" });
   }
+  function busSample() {
+    replace(busCircuit());
+    notify({
+      tone: "success",
+      message: "已载入共享总线示例：切换 EN1 / EN2 观察轮流驱动与竞争",
+    });
+  }
   function clear() {
     replace(emptyCircuit());
     notify({ tone: "info", message: "已新建空白实验" });
@@ -53,7 +60,7 @@ export function useWorkspace(
     try {
       const next = decodeDocument(text);
       replace(next);
-      notify({ tone: "success", message: "导入成功，实验已恢复" });
+      notify({ tone: "success", message: "导入成功，实验已恢复（含汇接关系）" });
     } catch (error) {
       notify({
         tone: "error",
@@ -72,5 +79,13 @@ export function useWorkspace(
     setTimeout(() => URL.revokeObjectURL(url), 1000);
     notify({ tone: "success", message: "实验文件已导出" });
   }
-  return { status, save, sample, clear, importText, exportFile };
+  return {
+    status,
+    save,
+    sample,
+    busSample,
+    clear,
+    importText,
+    exportFile,
+  };
 }

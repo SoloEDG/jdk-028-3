@@ -16,6 +16,14 @@ const { status } = lab.workspace;
 const selectedNode = computed(() =>
   document.value.nodes.find((node) => node.id === selected.value),
 );
+const selectedJunction = computed(() =>
+  document.value.junctions?.find((junction) => junction.id === selected.value),
+);
+const selectedWireId = computed(() =>
+  document.value.wires.some((wire) => wire.id === selected.value)
+    ? selected.value
+    : null,
+);
 function keydown(event: KeyboardEvent) {
   if ((event.target as HTMLElement).closest("input,textarea,select")) return;
   if (event.key === "Escape") lab.cancel();
@@ -46,6 +54,7 @@ onUnmounted(() => window.removeEventListener("keydown", keydown));
       :status="status"
       @rename="document.name = $event"
       @sample="lab.workspace.sample"
+      @bus-sample="lab.workspace.busSample"
       @clear="lab.workspace.clear"
       @save="lab.workspace.save"
       @export="lab.workspace.exportFile"
@@ -106,11 +115,13 @@ onUnmounted(() => window.removeEventListener("keydown", keydown));
             ><span
               >{{ selectedNode.kind }} · 拖动移动 · Delete 删除</span
             ></template
-          ><span v-else>{{
-            selected
-              ? "已选择连线，按 Delete 或点击“删除所选”断开。"
-              : "拖动元件移动位置 · 点击端口连接 · Esc 取消"
+          ><span
+            v-else-if="selectedJunction"
+            >已选择汇接点 · 拖动移动 · Delete 删除（仅移除其分支，其他接收端保持连接）</span
+          ><span v-else-if="selectedWireId">{{
+            "已选择连线，按 Delete 或点击“删除所选”断开。"
           }}</span
+          ><span v-else>拖动元件移动位置 · 点击端口连接 · Esc 取消</span
           ><span class="grid-label">GRID 20</span>
         </div>
         <div class="instruments">

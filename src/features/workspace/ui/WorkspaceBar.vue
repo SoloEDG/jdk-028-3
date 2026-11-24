@@ -4,6 +4,7 @@ const props = defineProps<{ name: string; status: string }>();
 const emit = defineEmits<{
   rename: [name: string];
   sample: [];
+  busSample: [];
   clear: [];
   save: [];
   export: [];
@@ -39,6 +40,10 @@ function replace(kind: "sample" | "clear") {
     else emit("sample");
   }
 }
+function loadBus() {
+  if (window.confirm("载入共享总线示例会替换当前工作台，继续吗？"))
+    emit("busSample");
+}
 </script>
 <template>
   <div class="workspace-bar">
@@ -57,6 +62,7 @@ function replace(kind: "sample" | "clear") {
     </div>
     <div class="workspace-actions">
       <button @click="replace('sample')">载入示例</button
+      ><button @click="loadBus">总线示例</button
       ><button @click="replace('clear')">新建</button
       ><button @click="emit('save')">保存</button
       ><button @click="input?.click()">导入</button

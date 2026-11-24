@@ -1,6 +1,6 @@
 import { ref } from "vue";
 import type { Notice } from "@/shared/commands";
-import type { Point } from "@/shared/types";
+import type { GateKind, Point } from "@/shared/types";
 import { usePlacement } from "@/features/catalog";
 import { useCircuit } from "@/features/circuit";
 import { useSimulation } from "@/features/simulation";
@@ -11,7 +11,9 @@ export function useLab() {
     document = ref(initial.document);
   const notice = ref<Notice>({
     tone: initial.warning ? "error" : "info",
-    message: initial.warning ?? "示例已就绪。切换输入，观察信号如何到达输出。",
+    message:
+      initial.warning ??
+      "示例已就绪。切换输入，观察信号如何到达输出；可在元件库中选用三态缓冲器搭建共享总线。",
   });
   const notify = (next: Notice) => {
     notice.value = next;
@@ -27,6 +29,20 @@ export function useLab() {
   });
   function place(point: Point) {
     if (!placement.tool.value) return;
+    if (placement.tool.value === "JUNCTION") {
+      if ((document.value.junctions?.length ?? 0) >= 200) {
+        notify({ tone: "error", message: "最多支持 200 个汇接点" });
+        return;
+      }
+      const junction = placement.createJunction(document.value, point);
+      circuit.selected.value = junction.id;
+      placement.tool.value = null;
+      notify({
+        tone: "success",
+        message: "已放置汇接点：只有汇接点才会合并网络，线路交叉不会相连",
+      });
+      return;
+    }
     if (document.value.nodes.length >= 120) {
       notify({
         tone: "error",
@@ -34,11 +50,8 @@ export function useLab() {
       });
       return;
     }
-    const node = placement.createNode(
-      document.value,
-      placement.tool.value,
-      point,
-    );
+    const kind: GateKind = placement.tool.value;
+    const node = placement.createNode(document.value, kind, point);
     document.value.nodes.push(node);
     circuit.selected.value = node.id;
     placement.tool.value = null;
@@ -52,6 +65,12 @@ export function useLab() {
     if (node) {
       node.x = point.x;
       node.y = point.y;
+      return;
+    }
+    const junction = document.value.junctions?.find((j) => j.id === id);
+    if (junction) {
+      junction.x = point.x;
+      junction.y = point.y;
     }
   }
   function cancel() {
